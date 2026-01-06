@@ -143,8 +143,9 @@ function create() {
     runner.setScale(0.3);
     runner.setDepth(2); // Ensure runner is on top of foreground (Depth 1)
     
-    // UI
+    // UI (levelText hidden for endless mode)
     levelText = this.add.text(10, 10, 'LEVEL: 1', { font: '900 24px sans-serif', fill: '#000000' });
+    levelText.setVisible(false);
     
     // BPM Text moved up 20% (runnerY is 0.75 * 640 = 480).
     // Original y was 276. Up 20% of screen height (128) -> 276 - 64 (extra 10%) = 212?
@@ -158,12 +159,15 @@ function create() {
     comboText = this.add.text(width * 0.5, 260, 'COMBO: 0x', { font: '900 32px sans-serif', fill: '#ffff00' }).setOrigin(0.5);
     comboText.setVisible(false);
 
-    // Bars
+    // Bars (speed UI hidden for endless mode)
     speedBar = this.add.graphics();
+    speedBar.setVisible(false);
     speedText = this.add.text(20, 57, 'SPEED: 0', { font: '900 16px sans-serif', fill: '#ffffff' });
+    speedText.setVisible(false);
     
     distanceBar = this.add.graphics();
-    distanceText = this.add.text(20, 97, 'DISTANCE: 0M', { font: '900 16px sans-serif', fill: '#000000' }); 
+    distanceBar.setVisible(false);
+    distanceText = this.add.text(10, 10, 'DISTANCE: 0M', { font: '900 24px sans-serif', fill: '#000000' }); 
     
     beatBar = this.add.graphics();
     beatBar.setDepth(3); // Beat bar on top of foreground
@@ -195,14 +199,14 @@ function create() {
     timerText = this.add.text(width - 10, 10, 'TIME: 0.00S', { font: '900 24px sans-serif', fill: '#000000' }).setOrigin(1, 0);
     timerText.setDepth(30);
 
-    instructionsText = this.add.text(width / 2, height / 2, 'CLICK TO START RHYTHM!\nTAP TO THE BEAT\nGOAL: 100M', { font: '900 24px sans-serif', fill: '#000000', align: 'center' }).setOrigin(0.5);
+    instructionsText = this.add.text(width / 2, height / 2, 'TAP TO START!\nHIT THE BEATS\nRUN FOREVER', { font: '900 24px sans-serif', fill: '#000000', align: 'center' }).setOrigin(0.5);
     instructionsText.setDepth(30);
     
-    // Upgrade UI
-    upgradeOption1Text = this.add.text(width / 2, height / 2 + 50, '[1] UPGRADE SPEED (+100)', { font: '900 20px sans-serif', fill: '#008800', backgroundColor: '#ffffff' }).setOrigin(0.5).setVisible(false).setPadding(10);
+    // Upgrade UI (hidden for endless mode)
+    upgradeOption1Text = this.add.text(width / 2, height / 2 + 50, '', { font: '900 20px sans-serif', fill: '#008800' }).setOrigin(0.5).setVisible(false);
     upgradeOption1Text.setDepth(30);
 
-    upgradeOption2Text = this.add.text(width / 2, height / 2 + 100, '[2] RESET LEVEL', { font: '900 20px sans-serif', fill: '#000088', backgroundColor: '#ffffff' }).setOrigin(0.5).setVisible(false).setPadding(10);
+    upgradeOption2Text = this.add.text(width / 2, height / 2 + 100, '', { font: '900 20px sans-serif', fill: '#000088' }).setOrigin(0.5).setVisible(false);
     upgradeOption2Text.setDepth(30);
 
     // Input
@@ -223,25 +227,6 @@ function create() {
     // Unified touch start handler
     canvas.addEventListener('touchstart', (e) => {
         e.preventDefault();
-        
-        // Check if we're on the upgrade screen
-        if (isFinished && currentTempo > 0) {
-            const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            const y = touch.clientY - rect.top;
-            const height = rect.height;
-            
-            // Touch zones for upgrade buttons
-            if (y > height * 0.4 && y < height * 0.55) {
-                handleUpgrade(1); // Speed upgrade
-                return;
-            } else if (y > height * 0.55 && y < height * 0.7) {
-                handleUpgrade(2); // Reset level
-                return;
-            }
-        }
-        
-        // Regular rhythm input
         handleInput();
     }, { passive: false });
     
@@ -254,10 +239,6 @@ function create() {
     canvas.addEventListener('contextmenu', (e) => {
         e.preventDefault();
     });
-    
-    // Keyboard input for testing/accessibility (optional, kept from before)
-    this.input.keyboard.on('keydown-ONE', () => handleUpgrade(1));
-    this.input.keyboard.on('keydown-TWO', () => handleUpgrade(2));
 }
 
 // Audio Engine
@@ -459,61 +440,30 @@ function handleGameOver() {
     
     runner.setAnimation(0, 'death', false); // Play death animation
     
-    instructionsText.setText('GAME OVER\nBPM REACHED 0\nCLICK TO RESTART');
+    const finalDistance = Math.floor(distance);
+    instructionsText.setText('GAME OVER\nDISTANCE: ' + finalDistance + 'M\nTAP TO RESTART');
     instructionsText.setVisible(true);
-    upgradeOption1Text.setVisible(false);
-    upgradeOption2Text.setVisible(false);
 }
 
-function handleUpgrade(choice) {
-    // If Game Over, any key resets (or handle in handleInput?)
-    // handleUpgrade handles level reset. 
-    // Let's allow restarting level 1 from game over
-    
-    // If not finished, do nothing
+function handleRestart() {
+    // Restart endless runner
     if (!isFinished) return;
-    
-    // If reducing to 0 BPM caused finish, treat it as failure -> reset level
-    if (currentTempo <= 0) {
-        // Reset to start of current level? Or Level 1?
-        // Let's reset current level
-        distance = 0;
-        currentSpeed = 0;
-        isFinished = false;
-        isRunning = false;
-        startTime = 0;
-        currentTempo = START_BPM; 
-        
-        runner.setAnimation(0, 'idle', true);
-        instructionsText.setText('LEVEL ' + level + '\nTRY AGAIN\nCLICK TO START');
-        updateBars();
-        return;
-    }
-    
-    if (choice === 1) {
-        maxSpeedLimit += 100;
-        console.log("Upgraded Speed to " + maxSpeedLimit);
-    }
-    
-    level++;
-    
-    // Dynamic Distance: Level * 100
-    goalDistance = level * 100;
     
     distance = 0;
     currentSpeed = 0;
     isFinished = false;
     isRunning = false;
     startTime = 0;
-    currentTempo = START_BPM; // Reset Tempo
+    currentTempo = START_BPM;
+    combo = 0;
+    highArpStep = 0;
+    activeBeats = [];
     
     runner.setAnimation(0, 'idle', true);
-    
-    instructionsText.setText('LEVEL ' + level + '\nGOAL: ' + goalDistance + 'M\nCLICK TO START');
+    instructionsText.setText('TAP TO START!\nHIT THE BEATS\nRUN FOREVER');
     instructionsText.setVisible(true);
-    upgradeOption1Text.setVisible(false);
-    upgradeOption2Text.setVisible(false);
-    levelText.setText('LEVEL: ' + level);
+    comboText.setVisible(false);
+    bpmText.setText(START_BPM + ' BPM');
     updateBars();
 }
 
@@ -532,12 +482,9 @@ function handleUpgrade(choice) {
     
 function handleInput() {
     if (isFinished) {
-        // If Game Over, allow restart
-        if (currentTempo <= 0) {
-            handleUpgrade(0); // Trigger restart logic
-            return;
-        }
-        return; 
+        // Game Over - restart endless runner
+        handleRestart();
+        return;
     } 
 
     // Define scene early
@@ -822,21 +769,6 @@ function update(time, delta) {
         if (currentSpeed < 0) currentSpeed = 0;
         
         distance += (currentSpeed * delta) / 100000; 
-        
-        if (distance >= goalDistance) {
-            distance = goalDistance;
-            isFinished = true;
-            finishTime = Date.now();
-            currentSpeed = 0; 
-            
-            runner.setAnimation(0, 'idle', true); 
-
-            const finalTime = ((finishTime - startTime) / 1000).toFixed(2);
-            instructionsText.setText('LEVEL COMPLETE!\nTIME: ' + finalTime + 'S\nFINAL BPM: ' + Math.floor(currentTempo) + '\nCHOOSE UPGRADE:');
-            instructionsText.setVisible(true);
-            upgradeOption1Text.setVisible(true);
-            upgradeOption2Text.setVisible(true);
-        }
     }
 
     if (isRunning && !isFinished) {
@@ -911,33 +843,6 @@ function drawBackground(width, height) {
 }
 
 function updateBars() {
-    const x = 10;
-    const width = 250; 
-    const height = 30; 
-    
-    speedBar.clear();
-    speedBar.fillStyle(0x222222);
-    speedBar.fillRect(x, 50, width, height);
-    const speedPct = Math.min(currentSpeed / maxSpeedLimit, 1);
-    speedBar.fillStyle(0x0066cc);
-    speedBar.fillRect(x, 50, width * speedPct, height);
-    speedBar.fillStyle(0xffffff, 0.2);
-    speedBar.fillRect(x, 50, width * speedPct, height / 2);
-    speedBar.lineStyle(2, 0x000000);
-    speedBar.strokeRect(x, 50, width, height);
-
-    distanceBar.clear();
-    distanceBar.fillStyle(0x222222);
-    distanceBar.fillRect(x, 90, width, height); 
-    
-    const distPct = Math.min(distance / goalDistance, 1);
-    distanceBar.fillStyle(0xcccc00); 
-    distanceBar.fillRect(x, 90, width * distPct, height);
-    distanceBar.fillStyle(0xffffff, 0.2);
-    distanceBar.fillRect(x, 90, width * distPct, height / 2);
-    distanceBar.lineStyle(2, 0x000000);
-    distanceBar.strokeRect(x, 90, width, height);
-
-    speedText.setText('SPEED: ' + Math.floor(currentSpeed));
-    distanceText.setText('DISTANCE: ' + Math.floor(distance) + 'M / ' + goalDistance + 'M').setY(97); 
+    // Endless mode - just update distance text
+    distanceText.setText('DISTANCE: ' + Math.floor(distance) + 'M');
 }
