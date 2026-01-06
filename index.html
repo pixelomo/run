@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Runner</title>
+    <style>
+        * {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            height: 100dvh;
+            font-family: sans-serif;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+        canvas {
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            touch-action: none;
+        }
+    </style>
+</head>
+<body>
+    <script type="module" src="game.js"></script>
+</body>
+</html>
+
