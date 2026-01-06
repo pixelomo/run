@@ -74,7 +74,7 @@ const LOOKAHEAD = 25.0;
 const SCHEDULE_AHEAD_TIME = 0.1; 
 
 // Visual Beat Constants
-const BEAT_BAR_Y = 600;
+const BEAT_BAR_Y = 320; // Center of screen (640 / 2)
 const BEAT_SPEED = 300; 
 
 // Constants
@@ -674,20 +674,17 @@ function update(time, delta) {
         const width = this.sys.game.config.width;
         beatBar.clear();
         
-    // Draw Beat Bar Background (Solid)
-    beatBar.fillStyle(0x333333, 1); // Dark grey background for beat area
-    beatBar.fillRect(0, BEAT_BAR_Y - 30, width, 60); // Cover the beat area
+    // Transparent background - no fill
     
-    // Draw Piano Score (5 lines)
-    beatBar.lineStyle(2, 0x000000, 0.5);
+    // Draw Piano Score (5 lines) - subtle transparent lines
+    beatBar.lineStyle(2, 0x000000, 0.2);
     for (let i = -2; i <= 2; i++) {
          beatBar.lineBetween(0, BEAT_BAR_Y + (i * 10), width, BEAT_BAR_Y + (i * 10));
     }
     
-    // Draw Center Target Line (Vertical)
-    beatBar.fillStyle(0xffffff, 1); // White fill? Maybe transparent
-    beatBar.lineStyle(2, 0x000000, 1);
-    beatBar.strokeRect(width / 2 - 3, BEAT_BAR_Y - 25, 6, 50);
+    // Draw Center Target Line (Vertical) - more visible
+    beatBar.lineStyle(3, 0xffffff, 0.8);
+    beatBar.lineBetween(width / 2, BEAT_BAR_Y - 30, width / 2, BEAT_BAR_Y + 30);
     
     const currentTime = audioContext.currentTime;
     const centerX = width / 2;
