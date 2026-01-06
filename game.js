@@ -35,6 +35,7 @@ let foreground; // New foreground sprite
 let speedText;
 let timerText;
 let distanceText;
+let highBpmText;
 let levelText;
 let bpmText;
 let speedBar;
@@ -55,7 +56,8 @@ let activeBeats = []; // Track active beats for miss detection
 let level = 1;
 let currentSpeed = 0;
 let distance = 0;
-let combo = 0; 
+let combo = 0;
+let highestBpm = 80; // Track highest BPM reached 
 
 let startTime = 0;
 let finishTime = 0;
@@ -167,7 +169,8 @@ function create() {
     
     distanceBar = this.add.graphics();
     distanceBar.setVisible(false);
-    distanceText = this.add.text(10, 10, 'DISTANCE: 0M', { font: '900 24px sans-serif', fill: '#000000' }); 
+    distanceText = this.add.text(10, 10, 'DISTANCE: 0M', { font: '900 24px sans-serif', fill: '#000000' });
+    highBpmText = this.add.text(10, 40, 'BEST BPM: 80', { font: '900 20px sans-serif', fill: '#ff6347' }); 
     
     beatBar = this.add.graphics();
     beatBar.setDepth(3); // Beat bar on top of foreground
@@ -197,7 +200,9 @@ function create() {
     updateBars();
 
     timerText = this.add.text(width - 10, 10, 'TIME: 0.00S', { font: '900 24px sans-serif', fill: '#000000' }).setOrigin(1, 0);
-    timerText.setDepth(30);
+    timerText.setVisible(false);
+    
+    if (highBpmText) highBpmText.setDepth(30);
 
     instructionsText = this.add.text(width / 2, height / 2, 'TAP TO START!\nHIT THE BEATS\nRUN FOREVER', { font: '900 24px sans-serif', fill: '#000000', align: 'center' }).setOrigin(0.5);
     instructionsText.setDepth(30);
@@ -441,7 +446,7 @@ function handleGameOver() {
     runner.setAnimation(0, 'death', false); // Play death animation
     
     const finalDistance = Math.floor(distance);
-    instructionsText.setText('GAME OVER\nDISTANCE: ' + finalDistance + 'M\nTAP TO RESTART');
+    instructionsText.setText('GAME OVER\nDISTANCE: ' + finalDistance + 'M\nBEST BPM: ' + Math.floor(highestBpm) + '\nTAP TO RESTART');
     instructionsText.setVisible(true);
 }
 
@@ -559,6 +564,12 @@ function handleInput() {
         combo++;
         const bpmIncrease = combo;
         currentTempo += bpmIncrease;
+        
+        // Track highest BPM reached
+        if (currentTempo > highestBpm) {
+            highestBpm = currentTempo;
+            highBpmText.setText('BEST BPM: ' + Math.floor(highestBpm));
+        }
         
         bpmText.setText(Math.floor(currentTempo) + ' BPM');
         comboText.setText('COMBO: ' + combo + 'x');
