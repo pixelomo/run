@@ -673,10 +673,11 @@ function handleInput() {
                         countdownText.setScale(1);
                         countdownText.setAlpha(1);
                         
-                        // NOW show dots - first beat starts at far right, arrives at center when "1" ends
+                        // NOW show dots - first beat starts off-screen right, visible during "1"
                         showDotsInCountdown = true;
-                        // Animation duration = 0.8 * spb, dot should arrive at center then
-                        nextNoteTime = audioContext.currentTime + (spb * 0.8);
+                        // Set first beat to arrive shortly AFTER "1" ends (gives player reaction time)
+                        // Dot will be visible approaching during "1" animation
+                        nextNoteTime = audioContext.currentTime + spb; // Full beat from now
                         beatCount = 0;
                         activeBeats = [];
                         
