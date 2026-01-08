@@ -559,6 +559,10 @@ function handleInput() {
                                 isCountingDown = false;
                                 isRunning = true;
                                 startTime = Date.now();
+                                // Reset beat timing so first beat is NOW, not in the past
+                                nextNoteTime = audioContext.currentTime + 0.1;
+                                beatCount = 0;
+                                activeBeats = [];
                                 runner.setAnimation(0, 'run', true);
                             }
                         });
@@ -797,9 +801,8 @@ function update(time, delta) {
             activeBeats.splice(i, 1);
         }
     }
-    } // End of !isCountingDown check
-    // -----------------------------
     
+    // --- Draw beat dots (only when NOT counting down) ---
     for (let i = startBeat; i < endBeat; i++) {
             const offset = i - beatCount;
             const beatTime = nextNoteTime + offset * currentSPB;
@@ -826,6 +829,8 @@ function update(time, delta) {
                  }
             }
         }
+    } // End of !isCountingDown check
+    // -----------------------------
     }
 
     const width = this.sys.game.config.width;
