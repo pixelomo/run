@@ -539,6 +539,13 @@ function handleInput() {
                 countdownText.setScale(1);
                 countdownText.setAlpha(1);
                 
+                // Start showing dots during "2" - gives more visual lead time
+                showDotsInCountdown = true;
+                // First beat arrives when "1" ends: 2 animations of 0.8*spb each = 1.6*spb from now
+                nextNoteTime = audioContext.currentTime + (spb * 1.6);
+                beatCount = 0;
+                activeBeats = [];
+                
                 // 2
                 scene.tweens.add({
                     targets: countdownText,
@@ -549,13 +556,6 @@ function handleInput() {
                         countdownText.setText('1');
                         countdownText.setScale(1);
                         countdownText.setAlpha(1);
-                        
-                        // Start showing dots now - first beat will arrive at center when "1" ends
-                        showDotsInCountdown = true;
-                        // "1" animation lasts 0.8*spb, so first beat should arrive then
-                        nextNoteTime = audioContext.currentTime + (spb * 0.8);
-                        beatCount = 0;
-                        activeBeats = [];
                         
                         // 1
                         scene.tweens.add({
