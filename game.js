@@ -297,9 +297,9 @@ const HIGH_MELODY_V3 = [
 
 let highArpStep = 0;
 
-// Get variation (0, 1, or 2) - switches every 16 bars (128 beats)
+// Get variation (0, 1, or 2) - switches every 4 bars (32 beats) ~24 seconds at 80 BPM
 function getVariation(beatNumber) {
-    return Math.floor(beatNumber / 128) % 3;
+    return Math.floor(beatNumber / 32) % 3;
 } 
 
 function scheduleNote(beatNumber, time) {
