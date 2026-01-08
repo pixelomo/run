@@ -941,6 +941,10 @@ function update(time, delta) {
             const beatTime = nextNoteTime + offset * currentSPB;
             
             const timeDiff = beatTime - currentTime;
+            
+            // Only draw future beats (timeDiff > 0) or very recent ones
+            if (timeDiff < -0.2) continue; // Skip beats that are already passed
+            
             const x = centerX + timeDiff * BEAT_SPEED;
             
             if (x > -30 && x < width + 30) {
