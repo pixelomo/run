@@ -63,6 +63,9 @@ let startTime = 0;
 let finishTime = 0;
 let isRunning = false;
 let isFinished = false;
+let isCountingDown = false;
+let countdownNumber = 3;
+let countdownText = null;
 
 // Rhythm Constants
 let currentTempo = 80; // Starting BPM
@@ -458,16 +461,20 @@ function handleRestart() {
     currentSpeed = 0;
     isFinished = false;
     isRunning = false;
+    isCountingDown = false;
+    countdownNumber = 3;
     startTime = 0;
     currentTempo = START_BPM;
     combo = 0;
     highArpStep = 0;
     activeBeats = [];
+    beatCount = 0;
     
     runner.setAnimation(0, 'idle', true);
     instructionsText.setText('TAP TO START!\nHIT THE BEATS\nRUN FOREVER');
     instructionsText.setVisible(true);
     comboText.setVisible(false);
+    if (countdownText) countdownText.setVisible(false);
     bpmText.setText(START_BPM + ' BPM');
     updateBars();
 }
@@ -496,16 +503,75 @@ function handleInput() {
     const scene = game.scene.scenes[0];
     
     // Check if game is not running (e.g. first start OR after level reset)
-    if (!isRunning) {
+    if (!isRunning && !isCountingDown) {
         if (!isAudioStarted) {
             initAudio();
         }
-        isRunning = true;
-        startTime = Date.now();
-        // currentTempo is handled in handleUpgrade or initAudio, don't reset here blindly
         instructionsText.setVisible(false);
-        runner.setAnimation(0, 'run', true);
+        
+        // Start countdown
+        isCountingDown = true;
+        countdownNumber = 3;
+        
+        // Create countdown text
+        if (!countdownText) {
+            countdownText = scene.add.text(scene.sys.game.config.width / 2, scene.sys.game.config.height / 2, '3', 
+                { font: '900 120px sans-serif', fill: '#ff6347' }).setOrigin(0.5);
+            countdownText.setDepth(100);
+        }
+        countdownText.setText('3');
+        countdownText.setVisible(true);
+        countdownText.setScale(1);
+        
+        // Animate countdown with beat timing
+        const spb = 60.0 / currentTempo;
+        
+        // 3
+        scene.tweens.add({
+            targets: countdownText,
+            scale: 1.5,
+            alpha: 0.5,
+            duration: spb * 1000 * 0.8,
+            onComplete: () => {
+                countdownText.setText('2');
+                countdownText.setScale(1);
+                countdownText.setAlpha(1);
+                
+                // 2
+                scene.tweens.add({
+                    targets: countdownText,
+                    scale: 1.5,
+                    alpha: 0.5,
+                    duration: spb * 1000 * 0.8,
+                    onComplete: () => {
+                        countdownText.setText('1');
+                        countdownText.setScale(1);
+                        countdownText.setAlpha(1);
+                        
+                        // 1
+                        scene.tweens.add({
+                            targets: countdownText,
+                            scale: 1.5,
+                            alpha: 0.5,
+                            duration: spb * 1000 * 0.8,
+                            onComplete: () => {
+                                countdownText.setVisible(false);
+                                isCountingDown = false;
+                                isRunning = true;
+                                startTime = Date.now();
+                                runner.setAnimation(0, 'run', true);
+                            }
+                        });
+                    }
+                });
+            }
+        });
         return; 
+    }
+    
+    // Ignore input during countdown
+    if (isCountingDown) {
+        return;
     }
 
     // Rhythm Accuracy Check
@@ -631,8 +697,8 @@ function handleInput() {
         bpmText.setText(Math.floor(currentTempo) + ' BPM');
     }
     
-    const marker = scene.add.circle(centerX, BEAT_BAR_Y, 15, hitColor);
-    marker.setStrokeStyle(2, 0x000000);
+    const marker = scene.add.circle(centerX, BEAT_BAR_Y, 30, hitColor);
+    marker.setStrokeStyle(3, 0x000000);
     marker.setDepth(100); // Ensure marker is on top of EVERYTHING
     scene.tweens.add({
         targets: marker,
@@ -663,28 +729,28 @@ function createFloatingText(x, y, message, color) {
 }
 
 function update(time, delta) {
-    if (isAudioStarted && !isFinished) {
+    if (isAudioStarted && !isFinished && !isCountingDown) {
         scheduler();
     }
 
     if (isFinished) return;
     
-    // Visual Beat Bar Logic
-    if (isAudioStarted) {
+    // Visual Beat Bar Logic - show during countdown too
+    if (isAudioStarted || isCountingDown) {
         const width = this.sys.game.config.width;
         beatBar.clear();
         
     // Transparent background - no fill
     
-    // Draw Piano Score (5 lines) - subtle transparent lines
-    beatBar.lineStyle(2, 0x000000, 0.2);
+    // Draw Piano Score (5 lines) - subtle transparent lines, twice as big spacing
+    beatBar.lineStyle(3, 0x000000, 0.2);
     for (let i = -2; i <= 2; i++) {
-         beatBar.lineBetween(0, BEAT_BAR_Y + (i * 10), width, BEAT_BAR_Y + (i * 10));
+         beatBar.lineBetween(0, BEAT_BAR_Y + (i * 20), width, BEAT_BAR_Y + (i * 20));
     }
     
-    // Draw Center Target Line (Vertical) - more visible
-    beatBar.lineStyle(3, 0xffffff, 0.8);
-    beatBar.lineBetween(width / 2, BEAT_BAR_Y - 30, width / 2, BEAT_BAR_Y + 30);
+    // Draw Center Target Line (Vertical) - more visible, taller
+    beatBar.lineStyle(4, 0xffffff, 0.8);
+    beatBar.lineBetween(width / 2, BEAT_BAR_Y - 50, width / 2, BEAT_BAR_Y + 50);
     
     const currentTime = audioContext.currentTime;
     const centerX = width / 2;
@@ -693,13 +759,14 @@ function update(time, delta) {
     const endBeat = beatCount + 5;
     
     beatBar.fillStyle(0xcccccc, 1);
-    beatBar.lineStyle(2, 0x000000, 1); // Black outline
+    beatBar.lineStyle(3, 0x000000, 1); // Black outline, thicker
     
     const currentSPB = 60.0 / currentTempo;
     
-    // --- Missed Beat Detection ---
+    // --- Missed Beat Detection (skip during countdown) ---
     // Check if we missed any beats in activeBeats
     // A beat is missed if currentTime > beatTime + 0.15 (Good Window) and !beat.hit
+    if (!isCountingDown) {
     for (let i = activeBeats.length - 1; i >= 0; i--) {
         const beat = activeBeats[i];
         if (!beat.hit && !beat.missed) {
@@ -730,6 +797,7 @@ function update(time, delta) {
             activeBeats.splice(i, 1);
         }
     }
+    } // End of !isCountingDown check
     // -----------------------------
     
     for (let i = startBeat; i < endBeat; i++) {
@@ -739,9 +807,9 @@ function update(time, delta) {
             const timeDiff = beatTime - currentTime;
             const x = centerX + timeDiff * BEAT_SPEED;
             
-            if (x > -20 && x < width + 20) {
-                 beatBar.fillCircle(x, BEAT_BAR_Y, 12); // Larger dots
-                 beatBar.strokeCircle(x, BEAT_BAR_Y, 12); // With outline
+            if (x > -30 && x < width + 30) {
+                 beatBar.fillCircle(x, BEAT_BAR_Y, 24); // Twice as big dots
+                 beatBar.strokeCircle(x, BEAT_BAR_Y, 24); // With outline
                  
                  // Draw double beat indicator (half-beat) every 16 beats
                  if (i % 16 === 0 && i > 0) {
@@ -749,10 +817,10 @@ function update(time, delta) {
                      const halfTimeDiff = halfBeatTime - currentTime;
                      const halfX = centerX + halfTimeDiff * BEAT_SPEED;
                      
-                     if (halfX > -20 && halfX < width + 20) {
+                     if (halfX > -30 && halfX < width + 30) {
                          beatBar.fillStyle(0xff6600, 1); // Orange for double beat
-                         beatBar.fillCircle(halfX, BEAT_BAR_Y, 10);
-                         beatBar.strokeCircle(halfX, BEAT_BAR_Y, 10);
+                         beatBar.fillCircle(halfX, BEAT_BAR_Y, 20);
+                         beatBar.strokeCircle(halfX, BEAT_BAR_Y, 20);
                          beatBar.fillStyle(0xcccccc, 1); // Reset fill color
                      }
                  }
