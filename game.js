@@ -267,69 +267,83 @@ function initAudio() {
 // Simple Bass and Melody Logic
 // Key: E Minor (E, G, A, B, D)
 // Frequencies: E2=82.41, G2=98.00, A2=110.00, B2=123.47, D3=146.83
-const BASS_FREQS = [82.41, 82.41, 98.00, 82.41, 110.00, 98.00, 123.47, 82.41]; // 8 step loop
-// Melody higher octave: E4=329.63 etc
-const MELODY_FREQS = [329.63, 0, 392.00, 0, 440.00, 392.00, 587.33, 493.88]; // 0 = rest
 
-// High energy melody for > 120 BPM - 3 octave arpeggiator (up then down)
-// E minor pentatonic across 3 octaves: E4-G4-A4-B4-D5 | E5-G5-A5-B5-D6 | E6-G6-A6-B6-D7
-// 16 step loop (double the bass 8-step = 16 notes per bass cycle)
-const HIGH_ARPEGGIO_FREQS = [
-    // Going UP (8 steps)
-    329.63,  // E4
-    392.00,  // G4
-    440.00,  // A4
-    493.88,  // B4
-    587.33,  // D5
-    659.25,  // E5
-    783.99,  // G5
-    880.00,  // A5
-    // Going DOWN (8 steps)
-    987.77,  // B5
-    880.00,  // A5
-    783.99,  // G5
-    659.25,  // E5
-    587.33,  // D5
-    493.88,  // B4
-    440.00,  // A4
-    392.00   // G4
+// Bass Variations (2 patterns, switch every 16 bars = 128 beats)
+const BASS_FREQS_V1 = [82.41, 82.41, 98.00, 82.41, 110.00, 98.00, 123.47, 82.41]; // Original
+const BASS_FREQS_V2 = [82.41, 98.00, 82.41, 110.00, 82.41, 123.47, 98.00, 82.41]; // Variation - more movement
+
+// Melody higher octave: E4=329.63 etc
+const MELODY_FREQS_V1 = [329.63, 0, 392.00, 0, 440.00, 392.00, 587.33, 493.88]; // Original
+const MELODY_FREQS_V2 = [0, 329.63, 0, 440.00, 392.00, 0, 493.88, 587.33]; // Variation - offset rhythm
+
+// High energy melody for > 120 BPM - 3 octave arpeggiator
+// Variation 1: Up then down
+const HIGH_ARPEGGIO_V1 = [
+    329.63, 392.00, 440.00, 493.88, 587.33, 659.25, 783.99, 880.00,  // UP
+    987.77, 880.00, 783.99, 659.25, 587.33, 493.88, 440.00, 392.00   // DOWN
 ];
-let highArpStep = 0; // Track arpeggiator position independently 
+// Variation 2: Jumping pattern - more energetic
+const HIGH_ARPEGGIO_V2 = [
+    329.63, 659.25, 392.00, 783.99, 440.00, 880.00, 493.88, 987.77,  // Octave jumps
+    880.00, 440.00, 783.99, 392.00, 659.25, 329.63, 587.33, 493.88   // Reverse jumps
+];
+
+let highArpStep = 0; // Track arpeggiator position independently
+
+// Get current variation (0 or 1) based on beat number - switches every 16 bars (128 beats)
+function getVariation(beatNumber) {
+    return Math.floor(beatNumber / 128) % 2;
+} 
 
 function scheduleNote(beatNumber, time) {
     const step = beatNumber % 8; // 8 beat loop
+    const variation = getVariation(beatNumber); // 0 or 1, switches every 16 bars
     
     // Track this beat for click detection
     activeBeats.push({ time: time, hit: false, missed: false, beatNumber: beatNumber });
 
-    // --- DRUMS ---
+    // --- DRUMS (2 variations) ---
     const oscDrum = audioContext.createOscillator();
     const gainDrum = audioContext.createGain();
     oscDrum.connect(gainDrum);
     gainDrum.connect(audioContext.destination);
 
-    // Kick on 0, 4 (Standard 4/4 kicks on 1 and 3)
-    // Snare on 2, 6 (Standard 4/4 snares on 2 and 4)
-    // Hi-hats on all?
-    // Let's do a driving kick every beat for "hypnotic"
-    oscDrum.frequency.setValueAtTime(150, time);
-    oscDrum.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
-    
-    // Accentuate beats 0 and 4 as heavy kicks, others slightly lighter?
-    // Let's stick to the previous Kick/Snare pattern but make it tighter
-    if (beatNumber % 2 === 0) {
-        // Kick
-        gainDrum.gain.setValueAtTime(1.0, time);
-        gainDrum.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+    if (variation === 0) {
+        // Variation 1: Standard kick/snare pattern
+        oscDrum.frequency.setValueAtTime(150, time);
+        oscDrum.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
+        
+        if (beatNumber % 2 === 0) {
+            // Kick
+            gainDrum.gain.setValueAtTime(1.0, time);
+            gainDrum.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+        } else {
+            // Snare/Hat
+            oscDrum.frequency.setValueAtTime(400, time); 
+            oscDrum.frequency.exponentialRampToValueAtTime(0.01, time + 0.1);
+            gainDrum.gain.setValueAtTime(0.6, time);
+            gainDrum.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+        }
     } else {
-        // Snare/Hat
-        oscDrum.frequency.setValueAtTime(400, time); 
-        oscDrum.frequency.exponentialRampToValueAtTime(0.01, time + 0.1); // Sharper
-        gainDrum.gain.setValueAtTime(0.6, time);
-        gainDrum.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+        // Variation 2: More syncopated - kicks on 0,3,4,7, snares on 2,5
+        const syncPattern = [0, 3, 4, 7]; // Kick positions
+        const isKick = syncPattern.includes(step);
+        
+        if (isKick) {
+            oscDrum.frequency.setValueAtTime(120, time); // Deeper kick
+            oscDrum.frequency.exponentialRampToValueAtTime(0.01, time + 0.6);
+            gainDrum.gain.setValueAtTime(1.0, time);
+            gainDrum.gain.exponentialRampToValueAtTime(0.01, time + 0.6);
+        } else {
+            // Snare with more attack
+            oscDrum.frequency.setValueAtTime(350, time);
+            oscDrum.frequency.exponentialRampToValueAtTime(0.01, time + 0.15);
+            gainDrum.gain.setValueAtTime(0.7, time);
+            gainDrum.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+        }
     }
     oscDrum.start(time);
-    oscDrum.stop(time + 0.5);
+    oscDrum.stop(time + 0.6);
 
     // --- DOUBLE DRUM HIT (every 16 beats) - in time with bass, player clicks both ---
     if (beatNumber % 16 === 0 && beatNumber > 0) {
@@ -358,25 +372,25 @@ function scheduleNote(beatNumber, time) {
         oscDouble.stop(doubleTime + 0.15);
     }
 
-    // --- BASS ---
+    // --- BASS (2 variations) ---
     const oscBass = audioContext.createOscillator();
     const gainBass = audioContext.createGain();
-    oscBass.type = 'triangle'; // Smoother, deeper
+    oscBass.type = variation === 0 ? 'triangle' : 'sawtooth'; // Different tone per variation
     oscBass.connect(gainBass);
     gainBass.connect(audioContext.destination);
 
-    const bassFreq = BASS_FREQS[step];
+    const bassFreqs = variation === 0 ? BASS_FREQS_V1 : BASS_FREQS_V2;
+    const bassFreq = bassFreqs[step];
     oscBass.frequency.setValueAtTime(bassFreq, time);
     gainBass.gain.setValueAtTime(0.5, time);
-    gainBass.gain.linearRampToValueAtTime(0, time + 0.3); // Short pluck
+    gainBass.gain.linearRampToValueAtTime(0, variation === 0 ? time + 0.3 : time + 0.2); // V2 more staccato
 
     oscBass.start(time);
     oscBass.stop(time + 0.4);
 
-    // --- MELODY ---
-    // Play melody every 2 beats? or on off-beats?
-    // Let's play sparse melody notes
-    const melodyFreq = MELODY_FREQS[step];
+    // --- MELODY (2 variations) ---
+    const melodyFreqs = variation === 0 ? MELODY_FREQS_V1 : MELODY_FREQS_V2;
+    const melodyFreq = melodyFreqs[step];
     if (melodyFreq > 0) {
         const oscMel = audioContext.createOscillator();
         const gainMel = audioContext.createGain();
@@ -395,7 +409,7 @@ function scheduleNote(beatNumber, time) {
         oscMel.stop(time + 0.6);
     }
 
-    // --- HIGH ENERGY MELODY (> 120 BPM) - Double notes, 3 octave arpeggiator ---
+    // --- HIGH ENERGY MELODY (> 120 BPM) - Double notes, 3 octave arpeggiator (2 variations) ---
     if (currentTempo > 120) {
         const secondsPerBeat = 60.0 / currentTempo;
         const halfBeat = secondsPerBeat / 2;
@@ -404,10 +418,13 @@ function scheduleNote(beatNumber, time) {
         // Max volume at 160 BPM
         let volume = Math.min(0.12, (currentTempo - 120) / 200.0);
         
+        // Select arpeggio pattern based on variation
+        const arpPattern = variation === 0 ? HIGH_ARPEGGIO_V1 : HIGH_ARPEGGIO_V2;
+        
         // Play TWO notes per beat (double the bass rate)
         for (let i = 0; i < 2; i++) {
             const noteTime = time + (i * halfBeat);
-            const arpFreq = HIGH_ARPEGGIO_FREQS[highArpStep % 16];
+            const arpFreq = arpPattern[highArpStep % 16];
             highArpStep++;
             
             const oscHigh = audioContext.createOscillator();
