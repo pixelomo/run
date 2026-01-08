@@ -66,6 +66,7 @@ let isFinished = false;
 let isCountingDown = false;
 let countdownNumber = 3;
 let countdownText = null;
+let showDotsInCountdown = false; // Show dots during final "1" phase
 
 // Rhythm Constants
 let currentTempo = 80; // Starting BPM
@@ -462,6 +463,7 @@ function handleRestart() {
     isFinished = false;
     isRunning = false;
     isCountingDown = false;
+    showDotsInCountdown = false;
     countdownNumber = 3;
     startTime = 0;
     currentTempo = START_BPM;
@@ -548,6 +550,12 @@ function handleInput() {
                         countdownText.setScale(1);
                         countdownText.setAlpha(1);
                         
+                        // Start showing dots now - first beat will arrive at center when "1" ends
+                        showDotsInCountdown = true;
+                        nextNoteTime = audioContext.currentTime + spb; // First beat arrives in 1 beat
+                        beatCount = 0;
+                        activeBeats = [];
+                        
                         // 1
                         scene.tweens.add({
                             targets: countdownText,
@@ -557,12 +565,9 @@ function handleInput() {
                             onComplete: () => {
                                 countdownText.setVisible(false);
                                 isCountingDown = false;
+                                showDotsInCountdown = false;
                                 isRunning = true;
                                 startTime = Date.now();
-                                // Reset beat timing so first beat is NOW, not in the past
-                                nextNoteTime = audioContext.currentTime + 0.1;
-                                beatCount = 0;
-                                activeBeats = [];
                                 runner.setAnimation(0, 'run', true);
                             }
                         });
@@ -770,7 +775,7 @@ function update(time, delta) {
     // --- Missed Beat Detection (skip during countdown) ---
     // Check if we missed any beats in activeBeats
     // A beat is missed if currentTime > beatTime + 0.15 (Good Window) and !beat.hit
-    if (!isCountingDown) {
+    if (!isCountingDown) { // Only detect misses when game is running
     for (let i = activeBeats.length - 1; i >= 0; i--) {
         const beat = activeBeats[i];
         if (!beat.hit && !beat.missed) {
@@ -802,7 +807,10 @@ function update(time, delta) {
         }
     }
     
-    // --- Draw beat dots (only when NOT counting down) ---
+    } // End of missed beat detection
+    
+    // --- Draw beat dots (when running OR during final countdown phase) ---
+    if (!isCountingDown || showDotsInCountdown) {
     for (let i = startBeat; i < endBeat; i++) {
             const offset = i - beatCount;
             const beatTime = nextNoteTime + offset * currentSPB;
