@@ -552,7 +552,8 @@ function handleInput() {
                         
                         // Start showing dots now - first beat will arrive at center when "1" ends
                         showDotsInCountdown = true;
-                        nextNoteTime = audioContext.currentTime + spb; // First beat arrives in 1 beat
+                        // "1" animation lasts 0.8*spb, so first beat should arrive then
+                        nextNoteTime = audioContext.currentTime + (spb * 0.8);
                         beatCount = 0;
                         activeBeats = [];
                         
